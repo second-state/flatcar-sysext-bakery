@@ -2,6 +2,7 @@
 set -euo pipefail
 
 export ARCH="${ARCH-x86-64}"
+export CUDA="${CUDA-0}"
 SCRIPTFOLDER="$(dirname "$(readlink -f "$0")")"
 
 if [ $# -lt 2 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
@@ -16,6 +17,7 @@ fi
 
 VERSION="$1"
 SYSEXTNAME="$2"
+CUDA_TRIPLE=""
 
 # The github release uses different arch identifiers, we map them here
 # and rely on bake.sh to map them back to what systemd expects
@@ -25,12 +27,23 @@ elif [ "${ARCH}" = "arm64" ]; then
   ARCH="aarch64"
 fi
 
+if [ "${CUDA}" = "12" ]; then
+  CUDA_TRIPLE="-cuda"
+  echo "WASI-NN GGUF plugin: enable cuda-12"
+elif [ "${CUDA}" = "11" ]; then
+  CUDA_TRIPLE="-cuda-11"
+  echo "WASI-NN GGUF plugin: enable cuda-11"
+else
+  CUDA_TRIPLE=""
+  echo "WASI-NN GGUF plugin: use pure CPU mode"
+fi
+
 # llamaedge is a wasm application, which requires WasmEdge and its WASI-NN GGML/GGUF plugin
 WASMEDGE_VERSION="0.14.1"
 
 # Download WasmEdge WASI-NN GGML/GGUF plugin
 rm -f "WasmEdge-plugin-wasi_nn-ggml-${WASMEDGE_VERSION}.tar.gz"
-curl -o "WasmEdge-plugin-wasi_nn-ggml-${WASMEDGE_VERSION}.tar.gz" -fsSL "https://github.com/WasmEdge/WasmEdge/releases/download/${WASMEDGE_VERSION}/WasmEdge-plugin-wasi_nn-ggml-${WASMEDGE_VERSION}-ubuntu20.04_${ARCH}.tar.gz"
+curl -o "WasmEdge-plugin-wasi_nn-ggml-${WASMEDGE_VERSION}.tar.gz" -fsSL "https://github.com/WasmEdge/WasmEdge/releases/download/${WASMEDGE_VERSION}/WasmEdge-plugin-wasi_nn-ggml${CUDA_TRIPLE}-${WASMEDGE_VERSION}-ubuntu20.04_${ARCH}.tar.gz"
 
 # Download llamaedge api server
 rm -f "llama-api-server.wasm"
